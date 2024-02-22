@@ -1,0 +1,801 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "AWS LaunchWizard generated Cloudformation template",
+  "Parameters" : {
+    "DomainDNSName" : {
+      "Type" : "String",
+      "Default" : "devopslearning.co.uk",
+      "Description" : "Fully qualified domain name (FQDN) of the forest root domain e.g. example.com",
+      "NoEcho" : false
+    },
+    "PrivateSubnetAssignment" : {
+      "Type" : "String",
+      "Default" : "subnet-0f9bd4d12521bbd3b,subnet-02293616e884c9e27",
+      "Description" : "Assign ID for private subnets.",
+      "NoEcho" : false
+    },
+    "DriveTypes" : {
+      "Type" : "String",
+      "Default" : "sql-server,logs,data,backup",
+      "Description" : "Drive types which could be sql, logs, data, backup",
+      "NoEcho" : false
+    },
+    "NumberOfNodes" : {
+      "Type" : "String",
+      "Default" : "2",
+      "Description" : "Enter the number of SQLServer nodes to create",
+      "NoEcho" : false
+    },
+    "DeviceNames" : {
+      "Type" : "String",
+      "Default" : "N/A,/dev/xvdb,/dev/xvdc,/dev/xvdd",
+      "Description" : "Names of existing devices on AMI",
+      "NoEcho" : false
+    },
+    "DomainAdminSecretName" : {
+      "Type" : "String",
+      "Default" : "LaunchWizard-test-DomainAdmin",
+      "Description" : "Secrets Manager Secret Name for FCI for the domain admin user. Must be at least 8 characters containing letters, numbers and symbols",
+      "NoEcho" : false
+    },
+    "CreateNewAD" : {
+      "Type" : "String",
+      "Default" : "true",
+      "Description" : "Create a New AD in your VPC with domian Admin user",
+      "NoEcho" : false
+    },
+    "RDGWName" : {
+      "Type" : "String",
+      "Default" : "test-RDGW",
+      "Description" : "Name your RDGW instance",
+      "NoEcho" : false
+    },
+    "WSFClusterName" : {
+      "Type" : "String",
+      "Default" : "testBeRmpE4oLZn",
+      "Description" : "Name which will be created as Cluster for WSFC ndoes in AD",
+      "NoEcho" : false
+    },
+    "VPCCIDR" : {
+      "Type" : "String",
+      "Default" : "10.9.11.0/24",
+      "Description" : "CIDR Block for the VPC",
+      "NoEcho" : false
+    },
+    "AssetsBucketName" : {
+      "Type" : "String",
+      "Default" : "test-noti-6473885",
+      "Description" : "S3 bucket name for the Launch Wizard assets. Launch Wizard bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+      "NoEcho" : false
+    },
+    "DriveLetters" : {
+      "Type" : "String",
+      "Default" : "C,D,E,F",
+      "Description" : "Drive letters which could be C, D, E, F",
+      "NoEcho" : false
+    },
+    "WSFCNodeInstanceType" : {
+      "Type" : "String",
+      "Default" : "c6a.xlarge",
+      "Description" : "Amazon EC2 instance type for the WSFC Nodes",
+      "NoEcho" : false
+    },
+    "NumberOfVPCTags" : {
+      "Type" : "String",
+      "Default" : "0",
+      "Description" : "Number of VPC tags",
+      "NoEcho" : false
+    },
+    "PublicSubnet1CIDR" : {
+      "Type" : "String",
+      "Default" : "10.9.11.224/27",
+      "Description" : "CIDR Block for the public DMZ subnet 1 located in Availability Zone 1",
+      "NoEcho" : false
+    },
+    "RDGWTagPairs" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Tag Key and Value pairs of RDGW",
+      "NoEcho" : false
+    },
+    "AssetsS3RegionCode" : {
+      "Type" : "String",
+      "Default" : "s3.ap-southeast-1",
+      "Description" : "S3 region code.",
+      "NoEcho" : false
+    },
+    "DomainAdminUser" : {
+      "Type" : "String",
+      "Default" : "admin",
+      "Description" : "User name for the account that will be added as Domain Administrator. This is separate from the default \"Administrator\" account. Note: This user will always default to \"Admin\" when using AWS Directory Service regardless of the value provided.",
+      "NoEcho" : false
+    },
+    "BYOLAMI" : {
+      "Type" : "String",
+      "Default" : "false",
+      "Description" : "Bring Your Own License AMI?",
+      "NoEcho" : false
+    },
+    "AGListenerName" : {
+      "Type" : "String",
+      "Default" : "testHOrYGLd13lQ",
+      "Description" : "Availability Group Listener Name",
+      "NoEcho" : false
+    },
+    "EnableAppInsights" : {
+      "Type" : "String",
+      "Default" : "false",
+      "Description" : "If Enable AppInsight",
+      "NoEcho" : false
+    },
+    "NumberOfSQLNodeTags" : {
+      "Type" : "String",
+      "Default" : "0",
+      "Description" : "Number of SQLNode tags",
+      "NoEcho" : false
+    },
+    "DatabaseName" : {
+      "Type" : "String",
+      "Default" : "TestDB",
+      "Description" : "Database Name",
+      "NoEcho" : false
+    },
+    "CreateRDGWNode" : {
+      "Type" : "String",
+      "Default" : "false",
+      "Description" : "Should RDGW node be created in case of sql single node scenario. Note, in HA RDGW must always be created",
+      "NoEcho" : false
+    },
+    "AGName" : {
+      "Type" : "String",
+      "Default" : "testjTXjfdBCG04",
+      "Description" : "Availability Group Name",
+      "NoEcho" : false
+    },
+    "Ec2RoleName" : {
+      "Type" : "String",
+      "Default" : "AmazonEC2RoleForLaunchWizard",
+      "Description" : "EC2 instance role name",
+      "NoEcho" : false
+    },
+    "PrivateSubnetCIDRs" : {
+      "Type" : "String",
+      "Default" : "10.9.11.208/28,10.9.11.192/28",
+      "Description" : "CIDR Block for private subnets.",
+      "NoEcho" : false
+    },
+    "AssetsS3KeyPrefix" : {
+      "Type" : "String",
+      "Default" : "test-1708592226305/",
+      "Description" : "S3 key prefix for the Launch Wizard assets. Launch Wizard key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+      "NoEcho" : false
+    },
+    "SQLServiceAccountSecret" : {
+      "Type" : "String",
+      "Default" : "LaunchWizard-test-SQLServiceAccount",
+      "Description" : "Secrets Manager name of Password for the SQL Service account. Must be at least 8 characters containing letters, numbers and symbols",
+      "NoEcho" : false
+    },
+    "VolumeTagPairs" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Tag Key and Value pairs of Volume",
+      "NoEcho" : false
+    },
+    "ResourceGroupName" : {
+      "Type" : "String",
+      "Default" : "LaunchWizard-SQLHAAlwaysOn-test",
+      "Description" : "Application Resource Group Name",
+      "NoEcho" : false
+    },
+    "NumberOfSubnetTags" : {
+      "Type" : "String",
+      "Default" : "0",
+      "Description" : "Number of Subnet tags",
+      "NoEcho" : false
+    },
+    "VPCName" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Name your VPC",
+      "NoEcho" : false
+    },
+    "VPCID" : {
+      "Type" : "String",
+      "Default" : "vpc-09eac1ba2b089621f",
+      "Description" : "(Optional) ID of the VPC",
+      "NoEcho" : false
+    },
+    "SQLAMIID" : {
+      "Type" : "String",
+      "Default" : "ami-065469b2b7672cc2b",
+      "Description" : "Version of SQL Windows AMI ID",
+      "NoEcho" : false
+    },
+    "VolumeIopsValues" : {
+      "Type" : "String",
+      "Default" : "8000,8000,8000,8000",
+      "Description" : "Default provisioned IOPs for the Root Drive, SQL Data, Logs and TempDb (for io1 volumes)",
+      "NoEcho" : false
+    },
+    "PrivateSubnet2RouteTable" : {
+      "Type" : "String",
+      "Default" : "rtb-09939e2ecfc78a793",
+      "Description" : "Route table IDS' for both subnets for ONTAP.",
+      "NoEcho" : false
+    },
+    "PrivateSubnetIDs" : {
+      "Type" : "String",
+      "Default" : "subnet-0f9bd4d12521bbd3b,subnet-02293616e884c9e27",
+      "Description" : "(Optional) ID for private subnets.",
+      "NoEcho" : false
+    },
+    "NumberOfVolumeTags" : {
+      "Type" : "String",
+      "Default" : "0",
+      "Description" : "Number of Volume tags",
+      "NoEcho" : false
+    },
+    "VolumeType" : {
+      "Type" : "String",
+      "Default" : "gp2",
+      "Description" : "Volume type for the SQL Data, Logs and TempDb volumes",
+      "NoEcho" : false
+    },
+    "SubnetMasks" : {
+      "Type" : "String",
+      "Default" : "255.255.255.240,255.255.255.240",
+      "NoEcho" : false
+    },
+    "NumberOfSubnets" : {
+      "Type" : "String",
+      "Default" : "2",
+      "Description" : "Enter the number of Subnets to create",
+      "NoEcho" : false
+    },
+    "TempDBonInstanceStore" : {
+      "Type" : "String",
+      "Default" : "false",
+      "Description" : "Place TempDB on instace Store",
+      "NoEcho" : false
+    },
+    "VolumeSizes" : {
+      "Type" : "String",
+      "Default" : "100,500,500,500",
+      "Description" : "Volume sizes for the SQL Data, Logs and TempDb volumes, in GiB",
+      "NoEcho" : false
+    },
+    "KeyPairName" : {
+      "Type" : "AWS::EC2::KeyPair::KeyName",
+      "Default" : "yencloudsqlao",
+      "Description" : "Public/private key pairs allow you to securely connect to your instance after it launches",
+      "NoEcho" : false
+    },
+    "PrivateSubnet1RouteTable" : {
+      "Type" : "String",
+      "Default" : "rtb-09939e2ecfc78a793",
+      "Description" : "Route table IDS' for both subnets for ONTAP.",
+      "NoEcho" : false
+    },
+    "NodeAccessTypes" : {
+      "Type" : "String",
+      "Default" : "SyncMode,SyncMode",
+      "Description" : "SQLHA can have up to 3 SyncMode nodes and 5 ReadOnlyMode nodes",
+      "NoEcho" : false
+    },
+    "ApplicationName" : {
+      "Type" : "String",
+      "Default" : "test",
+      "Description" : "Application Name",
+      "NoEcho" : false
+    },
+    "AvailabilityZones" : {
+      "Type" : "String",
+      "Default" : "ap-southeast-1a,ap-southeast-1b",
+      "Description" : "List of Availability Zones to use for the subnets in the VPC. Note: The logical order is preserved and that 2 AZ's must be provided unless the Third AZ parameter is specified, in which case 3 AZ's must me provided.",
+      "NoEcho" : false
+    },
+    "SQLNodeTagPairs" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Tag Key and Value pairs of SQLNode",
+      "NoEcho" : false
+    },
+    "RDGWInstanceType" : {
+      "Type" : "String",
+      "Default" : "m5.large",
+      "Description" : "Amazon EC2 instance type for the Remote Desktop Gateway instances",
+      "NoEcho" : false
+    },
+    "NodeNetBIOSNames" : {
+      "Type" : "String",
+      "Default" : "testsZTCWn94Ldl,testpT5jA8cV04J",
+      "Description" : "NetBIOS name of Nodes (each one up to 15 characters)",
+      "NoEcho" : false
+    },
+    "VPCTagPairs" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Tag Key and Value pairs of VPC",
+      "NoEcho" : false
+    },
+    "SQLServiceAccount" : {
+      "Type" : "String",
+      "Default" : "sqladmin",
+      "Description" : "User name for the SQL Server Service Account. This Account is a Domain User.",
+      "NoEcho" : false
+    },
+    "PublicSubnet1ID" : {
+      "Type" : "String",
+      "Default" : "subnet-063a855621a93f914",
+      "Description" : "(Optional) ID for public subnet 1 located in Availability Zone 1.",
+      "NoEcho" : false
+    },
+    "NumberOfRDGWTags" : {
+      "Type" : "String",
+      "Default" : "0",
+      "Description" : "Number of RDGW tags",
+      "NoEcho" : false
+    },
+    "NumberOfGeneralTags" : {
+      "Type" : "String",
+      "Default" : "0",
+      "Description" : "Number of General tags",
+      "NoEcho" : false
+    },
+    "GeneralTagPairs" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Tag Key and Value pairs of General resources",
+      "NoEcho" : false
+    },
+    "FSWParameters" : {
+      "Type" : "String",
+      "Default" : ",subnet-0f9bd4d12521bbd3b,m5.large",
+      "Description" : "FSW node name, private subnet, instance type",
+      "NoEcho" : false
+    },
+    "SubnetTagPairs" : {
+      "Type" : "String",
+      "Default" : "",
+      "Description" : "Tag Key and Value pairs of Subnet",
+      "NoEcho" : false
+    }
+  },
+  "Metadata" : {
+    "AWS::CloudFormation::Interface" : {
+      "ParameterGroups" : [ {
+        "Label" : {
+          "default" : "Network Configuration"
+        },
+        "Parameters" : [ "AvailabilityZones", "VPCName", "VPCCIDR", "VPCID", "PublicSubnet1CIDR", "PublicSubnet1ID", "PrivateSubnetCIDRs", "PrivateSubnetAssignment", "PrivateSubnetIDs", "PrivateSubnet1RouteTable", "PrivateSubnet2RouteTable", "NumberOfSubnets" ]
+      }, {
+        "Label" : {
+          "default" : "Amazon EC2 Configuration"
+        },
+        "Parameters" : [ "KeyPairName" ]
+      }, {
+        "Label" : {
+          "default" : "Standard Active Directory Configuration"
+        },
+        "Parameters" : [ "DomainDNSName", "DomainAdminSecretName", "WSFClusterName", "CreateNewAD" ]
+      }, {
+        "Label" : {
+          "default" : "Self-Managed Active Directory Configuration (for non-AWS Directory Service architecture)"
+        },
+        "Parameters" : [ "DomainAdminUser" ]
+      }, {
+        "Label" : {
+          "default" : "Remote Desktop Gateway Configuration"
+        },
+        "Parameters" : [ "CreateRDGWNode", "NodeAccessTypes", "NumberOfNodes", "RDGWInstanceType", "RDGWName" ]
+      }, {
+        "Label" : {
+          "default" : "Microsoft SQL Server Configuration"
+        },
+        "Parameters" : [ "SQLAMIID", "SQLServiceAccount", "SQLServiceAccountSecret", "BYOLAMI", "VolumeSizes", "VolumeType", "VolumeIopsValues", "DeviceNames", "DriveLetters", "DriveTypes", "TempDBonInstanceStore" ]
+      }, {
+        "Label" : {
+          "default" : "Failover Cluster Configuration"
+        },
+        "Parameters" : [ "WSFCNodeInstanceType", "NodeNetBIOSNames" ]
+      }, {
+        "Label" : {
+          "default" : "FSX Configuration"
+        }
+      }, {
+        "Label" : {
+          "default" : "AWS Launch Wizard Configuration"
+        },
+        "Parameters" : [ "AssetsBucketName", "AssetsS3KeyPrefix" ]
+      }, {
+        "Label" : {
+          "default" : "Resources' tags"
+        },
+        "Parameters" : [ "GeneralTagPairs", "NumberOfGeneralTags", "VPCTagPairs", "NumberOfVPCTags", "SubnetTagPairs", "NumberOfSubnetTags", "RDGWTagPairs", "NumberOfRDGWTags", "SQLNodeTagPairs", "NumberOfSQLNodeTags", "VolumeTagPairs", "NumberOfVolumeTags" ]
+      }, {
+        "Label" : {
+          "default" : "Application parameters"
+        },
+        "Parameters" : [ "AssetsS3RegionCode", "AGListenerName", "EnableAppInsights", "DatabaseName", "AGName", "Ec2RoleName", "ResourceGroupName", "SubnetMasks", "ApplicationName", "FSWParameters" ]
+      } ],
+      "ParameterLabels" : {
+        "DomainDNSName" : {
+          "default" : "Domain DNS Name"
+        },
+        "PrivateSubnetAssignment" : {
+          "default" : "Assign Private Subnet IDs"
+        },
+        "DriveTypes" : {
+          "default" : "Drive types that customers specified"
+        },
+        "NumberOfNodes" : {
+          "default" : "Number of SQLServer Nodes"
+        },
+        "DeviceNames" : {
+          "default" : "Name of devices"
+        },
+        "DomainAdminSecretName" : {
+          "default" : "Secrets Manager Secret Name for FCI of Domain Admin Password"
+        },
+        "CreateNewAD" : {
+          "default" : "Create New AD in your vpc"
+        },
+        "WSFClusterName" : {
+          "default" : "WSFC cluster name"
+        },
+        "RDGWName" : {
+          "default" : "Name your RDGW instance"
+        },
+        "AssetsBucketName" : {
+          "default" : "Launch Wizard S3 Bucket Name"
+        },
+        "VPCCIDR" : {
+          "default" : "VPC CIDR"
+        },
+        "DriveLetters" : {
+          "default" : "Drive letters that customers specified"
+        },
+        "WSFCNodeInstanceType" : {
+          "default" : "Instance Type for Cluster Nodes"
+        },
+        "NumberOfVPCTags" : {
+          "default" : "Number Of VPC's Tags"
+        },
+        "PublicSubnet1CIDR" : {
+          "default" : "Public Subnet 1 CIDR"
+        },
+        "RDGWTagPairs" : {
+          "default" : "tag pairs for RDGW"
+        },
+        "DomainAdminUser" : {
+          "default" : "Domain Admin User Name"
+        },
+        "BYOLAMI" : {
+          "default" : "Bring Your Own License AMI?"
+        },
+        "NumberOfSQLNodeTags" : {
+          "default" : "Number Of SQLNode's Tags"
+        },
+        "Ec2RoleName" : {
+          "default" : ""
+        },
+        "CreateRDGWNode" : {
+          "default" : "If RDGW should be created in case of Single Node Scenario. **NOTE** For HA Scenarios, RDGW must always be created"
+        },
+        "PrivateSubnetCIDRs" : {
+          "default" : "Private Subnet CIDRs"
+        },
+        "AssetsS3KeyPrefix" : {
+          "default" : "Launch Wizard S3 Key Prefix"
+        },
+        "SQLServiceAccountSecret" : {
+          "default" : "Secrets Manager Secret for of Service Account Password"
+        },
+        "VolumeTagPairs" : {
+          "default" : "tag pairs for Volume"
+        },
+        "NumberOfSubnetTags" : {
+          "default" : "Number Of Subnet's Tags"
+        },
+        "VPCName" : {
+          "default" : "Name your VPC"
+        },
+        "VPCID" : {
+          "default" : "VPC ID"
+        },
+        "SQLAMIID" : {
+          "default" : "SQL Server Version"
+        },
+        "PrivateSubnet2RouteTable" : {
+          "default" : "Route table ids of the private subnet 2 for SQL nodes"
+        },
+        "PrivateSubnetIDs" : {
+          "default" : "IDs for All Private Subnets"
+        },
+        "NumberOfVolumeTags" : {
+          "default" : "Number Of Volume's Tags"
+        },
+        "VolumeType" : {
+          "default" : "SQL Server Volume Type"
+        },
+        "NumberOfSubnets" : {
+          "default" : "Number of Subnets"
+        },
+        "TempDBonInstanceStore" : {
+          "default" : "Place Temp DB on local Instance store"
+        },
+        "VolumeSizes" : {
+          "default" : "SQL Server Volume Sizes"
+        },
+        "KeyPairName" : {
+          "default" : "Key Pair Name"
+        },
+        "PrivateSubnet1RouteTable" : {
+          "default" : "Route table ids of the private subnet 1 for SQL nodes"
+        },
+        "NodeAccessTypes" : {
+          "default" : "SQL Nodes' SQL Server Access Types"
+        },
+        "ApplicationName" : {
+          "default" : "Application Name"
+        },
+        "AvailabilityZones" : {
+          "default" : "Availability Zones"
+        },
+        "SQLNodeTagPairs" : {
+          "default" : "tag pairs for SQLNode"
+        },
+        "RDGWInstanceType" : {
+          "default" : "Remote Desktop Gateway Instance Type"
+        },
+        "NodeNetBIOSNames" : {
+          "default" : "Cluster Nodes NetBIOS Names"
+        },
+        "VPCTagPairs" : {
+          "default" : "tag pairs for VPC"
+        },
+        "SQLServiceAccount" : {
+          "default" : "Service Account Name"
+        },
+        "PublicSubnet1ID" : {
+          "default" : "Public Subnet 1 ID"
+        },
+        "NumberOfRDGWTags" : {
+          "default" : "Number Of RDGW's Tags"
+        },
+        "NumberOfGeneralTags" : {
+          "default" : "Number of General Tags"
+        },
+        "GeneralTagPairs" : {
+          "default" : "general tag pairs for all Launch Wizard resources"
+        },
+        "SubnetTagPairs" : {
+          "default" : "tag pairs for Subnet"
+        }
+      }
+    }
+  },
+  "Resources" : {
+    "LaunchWizardResourceGroup" : {
+      "Type" : "AWS::ResourceGroups::Group",
+      "Properties" : {
+        "Name" : {
+          "Ref" : "AWS::StackName"
+        },
+        "ResourceQuery" : {
+          "Type" : "CLOUDFORMATION_STACK_1_0"
+        }
+      }
+    },
+    "LaunchWizardLogGroup" : {
+      "Type" : "AWS::Logs::LogGroup",
+      "Properties" : {
+        "LogGroupName" : {
+          "Ref" : "AWS::StackName"
+        }
+      }
+    },
+    "LaunchWizardSQLHAAlwaysOnStack" : {
+      "Type" : "AWS::CloudFormation::Stack",
+      "Properties" : {
+        "TemplateURL" : "https://test-noti-6473885.s3.ap-southeast-1.amazonaws.com/test-1708592226305/sql/templates/sqlha-master.template",
+        "Parameters" : {
+          "UniqueID" : "8b33a8fe-d59c-446d-8561-88fcb140fff5",
+          "DomainDNSName" : {
+            "Ref" : "DomainDNSName"
+          },
+          "PrivateSubnetAssignment" : {
+            "Ref" : "PrivateSubnetAssignment"
+          },
+          "DriveTypes" : {
+            "Ref" : "DriveTypes"
+          },
+          "NumberOfNodes" : {
+            "Ref" : "NumberOfNodes"
+          },
+          "DeviceNames" : {
+            "Ref" : "DeviceNames"
+          },
+          "DomainAdminSecretName" : {
+            "Ref" : "DomainAdminSecretName"
+          },
+          "CreateNewAD" : {
+            "Ref" : "CreateNewAD"
+          },
+          "RDGWName" : {
+            "Ref" : "RDGWName"
+          },
+          "WSFClusterName" : {
+            "Ref" : "WSFClusterName"
+          },
+          "VPCCIDR" : {
+            "Ref" : "VPCCIDR"
+          },
+          "AssetsBucketName" : {
+            "Ref" : "AssetsBucketName"
+          },
+          "DriveLetters" : {
+            "Ref" : "DriveLetters"
+          },
+          "WSFCNodeInstanceType" : {
+            "Ref" : "WSFCNodeInstanceType"
+          },
+          "NumberOfVPCTags" : {
+            "Ref" : "NumberOfVPCTags"
+          },
+          "PublicSubnet1CIDR" : {
+            "Ref" : "PublicSubnet1CIDR"
+          },
+          "LogGroupName" : {
+            "Ref" : "LaunchWizardLogGroup"
+          },
+          "RDGWTagPairs" : {
+            "Ref" : "RDGWTagPairs"
+          },
+          "AssetsS3RegionCode" : {
+            "Ref" : "AssetsS3RegionCode"
+          },
+          "DomainAdminUser" : {
+            "Ref" : "DomainAdminUser"
+          },
+          "BYOLAMI" : {
+            "Ref" : "BYOLAMI"
+          },
+          "AGListenerName" : {
+            "Ref" : "AGListenerName"
+          },
+          "EnableAppInsights" : {
+            "Ref" : "EnableAppInsights"
+          },
+          "NumberOfSQLNodeTags" : {
+            "Ref" : "NumberOfSQLNodeTags"
+          },
+          "DatabaseName" : {
+            "Ref" : "DatabaseName"
+          },
+          "CreateRDGWNode" : {
+            "Ref" : "CreateRDGWNode"
+          },
+          "AGName" : {
+            "Ref" : "AGName"
+          },
+          "Ec2RoleName" : {
+            "Ref" : "Ec2RoleName"
+          },
+          "PrivateSubnetCIDRs" : {
+            "Ref" : "PrivateSubnetCIDRs"
+          },
+          "AssetsS3KeyPrefix" : {
+            "Ref" : "AssetsS3KeyPrefix"
+          },
+          "SQLServiceAccountSecret" : {
+            "Ref" : "SQLServiceAccountSecret"
+          },
+          "VolumeTagPairs" : {
+            "Ref" : "VolumeTagPairs"
+          },
+          "ResourceGroupName" : {
+            "Ref" : "ResourceGroupName"
+          },
+          "NumberOfSubnetTags" : {
+            "Ref" : "NumberOfSubnetTags"
+          },
+          "VPCName" : {
+            "Ref" : "VPCName"
+          },
+          "VPCID" : {
+            "Ref" : "VPCID"
+          },
+          "SQLAMIID" : {
+            "Ref" : "SQLAMIID"
+          },
+          "VolumeIopsValues" : {
+            "Ref" : "VolumeIopsValues"
+          },
+          "PrivateSubnet2RouteTable" : {
+            "Ref" : "PrivateSubnet2RouteTable"
+          },
+          "PrivateSubnetIDs" : {
+            "Ref" : "PrivateSubnetIDs"
+          },
+          "NumberOfVolumeTags" : {
+            "Ref" : "NumberOfVolumeTags"
+          },
+          "VolumeType" : {
+            "Ref" : "VolumeType"
+          },
+          "SubnetMasks" : {
+            "Ref" : "SubnetMasks"
+          },
+          "NumberOfSubnets" : {
+            "Ref" : "NumberOfSubnets"
+          },
+          "TempDBonInstanceStore" : {
+            "Ref" : "TempDBonInstanceStore"
+          },
+          "VolumeSizes" : {
+            "Ref" : "VolumeSizes"
+          },
+          "KeyPairName" : {
+            "Ref" : "KeyPairName"
+          },
+          "PrivateSubnet1RouteTable" : {
+            "Ref" : "PrivateSubnet1RouteTable"
+          },
+          "NodeAccessTypes" : {
+            "Ref" : "NodeAccessTypes"
+          },
+          "ApplicationName" : {
+            "Ref" : "ApplicationName"
+          },
+          "AvailabilityZones" : {
+            "Ref" : "AvailabilityZones"
+          },
+          "SQLNodeTagPairs" : {
+            "Ref" : "SQLNodeTagPairs"
+          },
+          "RDGWInstanceType" : {
+            "Ref" : "RDGWInstanceType"
+          },
+          "NodeNetBIOSNames" : {
+            "Ref" : "NodeNetBIOSNames"
+          },
+          "VPCTagPairs" : {
+            "Ref" : "VPCTagPairs"
+          },
+          "SQLServiceAccount" : {
+            "Ref" : "SQLServiceAccount"
+          },
+          "PublicSubnet1ID" : {
+            "Ref" : "PublicSubnet1ID"
+          },
+          "NumberOfRDGWTags" : {
+            "Ref" : "NumberOfRDGWTags"
+          },
+          "NumberOfGeneralTags" : {
+            "Ref" : "NumberOfGeneralTags"
+          },
+          "GeneralTagPairs" : {
+            "Ref" : "GeneralTagPairs"
+          },
+          "FSWParameters" : {
+            "Ref" : "FSWParameters"
+          },
+          "SubnetTagPairs" : {
+            "Ref" : "SubnetTagPairs"
+          }
+        },
+        "Tags" : [ {
+          "Key" : "LaunchWizardResourceGroupID",
+          "Value" : {
+            "Ref" : "LaunchWizardResourceGroup"
+          }
+        }, {
+          "Key" : "LaunchWizardApplicationType",
+          "Value" : "SQL_SERVER"
+        } ]
+      }
+    }
+  }
+}
