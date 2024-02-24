@@ -1,0 +1,1249 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template is intended to be installed into an existing VPC with an Active Directory domain. It will create an auto-scaling group of RD Gateway instances in the public VPC subnet. **WARNING** This template creates Amazon EC2 Windows instance and related resources. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Network Configuration"
+                    },
+                    "Parameters": [
+                        "VPCID",
+                        "PublicSubnet1ID",
+                        "RDGWAccess",
+                        "RDGWName",
+                        "IsRDGWAccessUsingCIDR",
+                        "RDGWTagPairs",
+                        "NumberOfRDGWTags",
+                        "GeneralTagPairString",
+                        "VolumeTagPairString",
+                        "UniqueID"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Amazon EC2 Configuration"
+                    },
+                    "Parameters": [
+                        "Ec2RoleName",
+                        "LatestAmiId",
+                        "KeyPairName",
+                        "RDGWInstanceType"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Microsoft Active Directory Configuration"
+                    },
+                    "Parameters": [
+                        "DomainDNSName",
+                        "DomainMemberSGID",
+                        "DomainAdminUser",
+                        "DomainAdminPasswordKey",
+                        "CreateNewAD",
+                        "ADServersPrivateIP"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS LaunchWizard Configuration"
+                    },
+                    "Parameters": [
+                        "AssetsBucketName",
+                        "AssetsS3KeyPrefix"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "ApplicationName": {
+                    "default": "Application Name"
+                },
+                "Ec2RoleName": {
+                    "default": "EC2 Instance Role Name"
+                },
+                "UniqueID": {
+                    "default": "Automation Execution Unique Id"
+                },
+                "VolumeTagPairString": {
+                    "default": "String includes all volume tags key and value pairs"
+                },
+                "GeneralTagPairString": {
+                    "default": "String includes all general tags key and value pairs"
+                },
+                "CreateNewAD": {
+                    "default": "Create a new AD for your vpc"
+                },
+                "LatestAmiId": {
+                    "default": "AMI ID for the RDGW node"
+                },
+                "DomainAdminPasswordKey": {
+                    "default": "SSM Parameter Store Key of Domain Admin Password"
+                },
+                "DomainAdminUser": {
+                    "default": "Domain Admin User Name"
+                },
+                "DomainDNSName": {
+                    "default": "Domain DNS Name"
+                },
+                "DomainMemberSGID": {
+                    "default": "Domain Member Security Group ID"
+                },
+                "ADServersPrivateIP": {
+                    "default": "AD DNS Servers IP address"
+                },
+                "KeyPairName": {
+                    "default": "Key Pair Name"
+                },
+                "PublicSubnet1ID": {
+                    "default": "Public Subnet 1 ID"
+                },
+                "AssetsBucketName": {
+                    "default": "LaunchWizard S3 Bucket Name"
+                },
+                "AssetsS3KeyPrefix": {
+                    "default": "LaunchWizard S3 Key Prefix"
+                },
+                "RDGWInstanceType": {
+                    "default": "Remote Desktop Gateway Instance Type"
+                },
+                "RDGWAccess": {
+                    "default": "Allowed Remote Desktop Gateway External Access CIDR or Security Group"
+                },
+                "RDGWName": {
+                    "default": "Name your RDGW instance"
+                },
+                "IsRDGWAccessUsingCIDR": {
+                    "default": "Is RDGW Access using CIDR"
+                },
+                "VPCID": {
+                    "default": "VPC ID"
+                },
+                "RDGWTagPairs": {
+                    "default": "Tag Key and Value pairs of RDGW"
+                },
+                "NumberOfRDGWTags": {
+                    "default": "Number of RDGW's Tags"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "ApplicationName": {
+            "Default": "LaunchWizard",
+            "Description": "Application Name",
+            "Type": "String"
+        },
+        "Ec2RoleName": {
+            "Default": "",
+            "Description": "Role name used for RDGW Instance Profile",
+            "Type": "String"
+        },
+        "UniqueID": {
+            "Default": "UID123",
+            "Description": "Automation Execution Unique Id",
+            "Type": "String"
+        },
+        "VolumeTagPairString": {
+            "Default": "",
+            "Description": "StringList includes all volume tags key and value pairs",
+            "Type": "String"
+        },
+        "GeneralTagPairString": {
+            "Default": "",
+            "Description": "StringList includes all general tags key and value pairs",
+            "Type": "String"
+        },
+        "LogGroupName": {
+            "Default": "",
+            "Description": "Log Group Name.",
+            "Type": "String"
+        },
+        "EnableLogFeature": {
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "true",
+            "Description": "If Log Feature has been required",
+            "Type": "String"
+        },
+        "CreateNewAD": {
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "true",
+            "Description": "Have a AD in your VPC already",
+            "Type": "String"
+        },
+        "LatestAmiId": {
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/ami-windows-latest/Windows_Server-2019-English-Full-Base"
+        },
+        "DomainAdminPasswordKey": {
+            "Description": "Password for the domain admin user. Must be at least 8 characters containing letters, numbers and symbols",
+            "Type": "String"
+        },
+        "DomainAdminUser": {
+            "AllowedPattern": "([a-zA-Z0-9]+(\\.|_|-|@)*)+",
+            "Default": "StackAdmin",
+            "Description": "User name for the Domain Administrator. This is separate from the default \"Administrator\" account",
+            "MaxLength": "25",
+            "MinLength": "5",
+            "Type": "String"
+        },
+        "DomainDNSName": {
+            "Description": "Fully qualified domain name (FQDN) e.g. example.com",
+            "Type": "String",
+            "Default": "example.com",
+            "MinLength": "2",
+            "MaxLength": "255",
+            "AllowedPattern": "[a-zA-Z0-9\\-]+\\..+"
+        },
+        "DomainMemberSGID": {
+            "Description": "ID of the Domain Member Security Group (e.g., sg-7f16e910)",
+            "Type": "AWS::EC2::SecurityGroup::Id"
+        },
+        "ADServersPrivateIP": {
+            "Default": "",
+            "Description": "Fixed private IP for Active Directory servers",
+            "Type": "String"
+        },
+        "KeyPairName": {
+            "Description": "Public/private key pairs allow you to securely connect to your instance after it launches",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "PublicSubnet1ID": {
+            "Description": "ID of the public subnet 1 that you want to provision the first Remote Desktop Gateway into (e.g., subnet-a0246dcd)",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "AssetsBucketName": {
+            "ConstraintDescription": "LaunchWizard SQLHA bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "launchwizard-sqlha-templates",
+            "Description": "S3 bucket name for the LaunchWizard SQLHA assets. LaunchWizard SQLHA bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "AssetsS3RegionCode": {
+            "Default": "s3.us-east-1",
+            "Description": "S3 region code.",
+            "Type": "String"
+        },
+        "AssetsS3KeyPrefix": {
+            "ConstraintDescription": "LaunchWizard SQLHA key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "launchwizard-microsoft-rdgateway/",
+            "Description": "S3 key prefix for the LaunchWizard SQLHA assets. LaunchWizard SQLHA key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        },
+        "RDGWInstanceType": {
+            "Description": "Amazon EC2 instance type for the Remote Desktop Gateway instances",
+            "Type": "String",
+            "Default": "t2.large"
+        },
+        "RDGWAccess": {
+            "AllowedPattern": "^((([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/([0-9]|[1-2][0-9]|3[0-2]))|sg-(\\w+)){1}$|^$",
+            "Description": "Allowed CIDR Block for external access to the Remote Desktop Gateways",
+            "Type": "String",
+            "Default": ""
+        },
+        "IsRDGWAccessUsingCIDR": {
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "true",
+            "Description": "Is RDGW access using CIDR",
+            "Type": "String"
+        },
+        "RDGWName": {
+            "Description": "Name your RDGW instance",
+            "Type": "String"
+        },
+        "VPCID": {
+            "Description": "ID of the VPC (e.g., vpc-0343606e)",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "RDGWTagPairs": {
+            "Default": "",
+            "Description": "Tag Key and Value pairs of RDGW",
+            "Type": "CommaDelimitedList"
+        },
+        "NumberOfRDGWTags": {
+            "Default": "0",
+            "AllowedValues": [
+                "0",
+                "1",
+                "2",
+                "3"
+            ],
+            "Description": "Number of RDGW tags",
+            "Type": "String"
+        }
+    },
+    "Conditions": {
+        "isGovRegion": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        "us-gov-west-1",
+                        {
+                            "Ref": "AWS::Region"
+                        }
+                    ]
+                },
+                {
+                    "Fn::Equals": [
+                        "us-gov-east-1",
+                        {
+                            "Ref": "AWS::Region"
+                        }
+                    ]
+                }
+            ]
+        },
+        "NewRole": {
+            "Fn::Equals": [
+                {
+                    "Ref": "Ec2RoleName"
+                },
+                ""
+            ]
+        },
+        "1RDGWTags": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfRDGWTags"
+                        },
+                        "1"
+                    ]
+                },
+                {
+                    "Condition": "2RDGWTags"
+                }
+            ]
+        },
+        "2RDGWTags": {
+            "Fn::Or": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "NumberOfRDGWTags"
+                        },
+                        "2"
+                    ]
+                },
+                {
+                    "Condition": "3RDGWTags"
+                }
+            ]
+        },
+        "3RDGWTags": {
+            "Fn::Equals": [
+                {
+                    "Ref": "NumberOfRDGWTags"
+                },
+                "3"
+            ]
+        },
+        "RDGWAccessIsUsingCIDR": {
+            "Fn::Equals": [
+                {
+                    "Ref": "IsRDGWAccessUsingCIDR"
+                },
+                "true"
+            ]
+        },
+        "RDGWAccessIsNotEmpty": {
+            "Fn::Not": [
+                {
+                    "Fn::Equals": [
+                        {
+                            "Ref": "RDGWAccess"
+                        },
+                        ""
+                    ]
+                }
+            ]
+        },
+        "RDGWAccessIsUsingCIDRAndNotEmpty": {
+            "Fn::And": [
+                {
+                    "Condition": "RDGWAccessIsUsingCIDR"
+                },
+                {
+                    "Condition": "RDGWAccessIsNotEmpty"
+                }
+            ]
+        },
+        "LogFeatureEnabled": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EnableLogFeature"
+                },
+                "true"
+            ]
+        }
+    },
+    "Rules": {
+        "SubnetsInVPC": {
+            "Assertions": [
+                {
+                    "Assert": {
+                        "Fn::EachMemberIn": [
+                            {
+                                "Fn::ValueOfAll": [
+                                    "AWS::EC2::Subnet::Id",
+                                    "VpcId"
+                                ]
+                            },
+                            {
+                                "Fn::RefAll": "AWS::EC2::VPC::Id"
+                            }
+                        ]
+                    },
+                    "AssertDescription": "All subnets must in the VPC"
+                }
+            ]
+        },
+        "CheckSupportedInstances": {
+            "RuleCondition": {
+                "Fn::Contains": [
+                    [
+                        "m4.large",
+                        "m4.xlarge",
+                        "m4.2xlarge",
+                        "m4.4xlarge"
+                    ],
+                    {
+                        "Ref": "RDGWInstanceType"
+                    }
+                ]
+            },
+            "Assertions": [
+                {
+                    "Assert": {
+                        "Fn::Not": [
+                            {
+                                "Fn::Contains": [
+                                    [
+                                        "eu-west-3"
+                                    ],
+                                    {
+                                        "Ref": "AWS::Region"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    "AssertDescription": "M4 instances are not available in the Paris region"
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "RDGWHostRole": {
+            "Condition": "NewRole",
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "ManagedPolicyArns": [
+                {
+                    "Fn::Join": [
+                        "",
+                        [
+                            "arn:",
+                            {
+                                "Ref" : "AWS::Partition"
+                            },
+                            ":iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+                        ]
+                    ]
+                }
+                ],
+                "Policies": [
+                {
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                        {
+                            "Action": [
+                                "logs:Create*",
+                                "logs:PutLogEvents",
+                                "s3:GetObject"
+                            ],
+                            "Resource": [
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {
+                                            "Ref" : "AWS::Partition"
+                                        },
+                                        ":logs:*:*:*"
+                                    ]
+                                ]
+                            },
+                            {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "arn:",
+                                        {
+                                            "Ref" : "AWS::Partition"
+                                        },
+                                        ":s3:::*"
+                                    ]
+                                ]
+                            }
+                            ],
+                            "Effect": "Allow"
+                        }
+                        ]
+                    },
+                    "PolicyName": "aws-launchwizard-s3-policy"
+                },
+                {
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                        {
+                            "Action": [
+                                "ec2:AssociateAddress",
+                                "ec2:DescribeAddresses",
+                                "ec2:CreateTags"
+                            ],
+                            "Resource": [
+                                "*"
+                            ],
+                            "Effect": "Allow"
+                        }
+                        ]
+                    },
+                    "PolicyName": "rdgw-eip-policy"
+                }
+                ],
+                "Path": "/",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                    {
+                        "Action": [
+                            "sts:AssumeRole"
+                        ],
+                        "Principal": {
+                            "Service": [
+                                "ec2.amazonaws.com"
+                            ]
+                        },
+                        "Effect": "Allow"
+                    }
+                    ],
+                    "Version": "2012-10-17"
+                }
+            }
+        },
+        "RDGWHostProfile": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Roles": {
+                    "Fn::If": [
+                        "NewRole",
+                        [
+                            {
+                                "Ref": "Ec2RoleName"
+                            }
+                        ],
+                        [
+                            {
+                                "Ref": "Ec2RoleName"
+                            }
+                        ]
+                    ]
+                },
+                "Path": "/"
+            }
+        },
+        "RDGWAutoScalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+                "AutoScalingGroupName": {
+                    "Fn::Sub": "LaunchWizard-${ApplicationName}-AutoScalingGroup"
+                },
+                "LaunchConfigurationName": {
+                    "Ref": "RDGWLaunchConfiguration"
+                },
+                "VPCZoneIdentifier": [
+                    {
+                        "Ref": "PublicSubnet1ID"
+                    }
+                ],
+                "MinSize": "1",
+                "MaxSize": "1",
+                "Cooldown": "300",
+                "DesiredCapacity": "1",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Ref": "RDGWName"
+                        },
+                        "PropagateAtLaunch": "true"
+                    },
+                    {
+                        "Fn::If": [
+                            "1RDGWTags",
+                            {
+                                "Key": {
+                                    "Fn::Select": [
+                                        "0",
+                                        {
+                                            "Ref": "RDGWTagPairs"
+                                        }
+                                    ]
+                                },
+                                "Value": {
+                                    "Fn::Select": [
+                                        "1",
+                                        {
+                                            "Ref": "RDGWTagPairs"
+                                        }
+                                    ]
+                                },
+                                "PropagateAtLaunch": "true"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    },
+                    {
+                        "Fn::If": [
+                            "2RDGWTags",
+                            {
+                                "Key": {
+                                    "Fn::Select": [
+                                        "2",
+                                        {
+                                            "Ref": "RDGWTagPairs"
+                                        }
+                                    ]
+                                },
+                                "Value": {
+                                    "Fn::Select": [
+                                        "3",
+                                        {
+                                            "Ref": "RDGWTagPairs"
+                                        }
+                                    ]
+                                },
+                                "PropagateAtLaunch": "true"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    },
+                    {
+                        "Fn::If": [
+                            "3RDGWTags",
+                            {
+                                "Key": {
+                                    "Fn::Select": [
+                                        "4",
+                                        {
+                                            "Ref": "RDGWTagPairs"
+                                        }
+                                    ]
+                                },
+                                "Value": {
+                                    "Fn::Select": [
+                                        "5",
+                                        {
+                                            "Ref": "RDGWTagPairs"
+                                        }
+                                    ]
+                                },
+                                "PropagateAtLaunch": "true"
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "CreationPolicy": {
+                "ResourceSignal": {
+                    "Count": "1",
+                    "Timeout": "PT60M"
+                }
+            }
+        },
+        "RDGWLaunchConfiguration": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata": {
+                "AWS::CloudFormation::Authentication": {
+                    "S3AccessCreds": {
+                        "type": "S3",
+                        "roleName": {
+                            "Fn::If": [
+                                "NewRole",
+                                {
+                                    "Ref": "RDGWHostRole"
+                                },
+                                {
+                                    "Ref": "Ec2RoleName"
+                                }
+                            ]
+                        },
+                        "buckets": [
+                            {
+                                "Ref": "AssetsBucketName"
+                            }
+                        ]
+                    }
+                },
+                "AWS::CloudFormation::Init": {
+                    "configSets": {
+                        "config": [
+                            "configureCWLogs",
+                            "setup",
+                            "join",
+                            "installRDS",
+                            "finalize"
+                        ]
+                    },
+                    "configureCWLogs": {
+                        "files": {
+                            "C:\\Program Files\\Amazon\\SSM\\Plugins\\awsCloudWatch\\AWS.EC2.Windows.CloudWatch.json": {
+                                "content": {
+                                    "Fn::If": [
+                                        "LogFeatureEnabled",
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "{",
+                                                    "  \"IsEnabled\" : true,",
+                                                    "  \"EngineConfiguration\" : {",
+                                                    "    \"PollInterval\" : \"00:00:05\",",
+                                                    "    \"Components\" : [{",
+                                                    "      \"Id\" : \"ApplicationEventLog\",",
+                                                    "      \"FullName\" : \"AWS.EC2.Windows.CloudWatch.EventLog.EventLogInputComponent,AWS.EC2.Windows.CloudWatch\",",
+                                                    "      \"Parameters\" : {",
+                                                    "        \"LogName\" : \"Application\",",
+                                                    "        \"Levels\" : \"7\"",
+                                                    "      }",
+                                                    "    },",
+                                                    "    {",
+                                                    "      \"Id\": \"CfnInitLog\",",
+                                                    "      \"FullName\": \"AWS.EC2.Windows.CloudWatch.CustomLog.CustomLogInputComponent,AWS.EC2.Windows.CloudWatch\",",
+                                                    "      \"Parameters\": {",
+                                                    "        \"LogDirectoryPath\": \"C:\\\\cfn\\\\log\",",
+                                                    "        \"TimestampFormat\": \"yyyy-MM-dd HH:mm:ss,fff\",",
+                                                    "        \"Encoding\": \"ASCII\",",
+                                                    "        \"Filter\": \"cfn-init.log\",",
+                                                    "        \"CultureName\": \"en-US\",",
+                                                    "        \"TimeZoneKind\": \"Local\"",
+                                                    "      }",
+                                                    "    },",
+                                                    "    {",
+                                                    "      \"Id\": \"CloudWatchCfnInitLog\",",
+                                                    "      \"FullName\": \"AWS.EC2.Windows.CloudWatch.CloudWatchLogsOutput,AWS.EC2.Windows.CloudWatch\",",
+                                                    "      \"Parameters\": {",
+                                                    "        \"AccessKey\": \"\",",
+                                                    "        \"SecretKey\": \"\",",
+                                                    {
+                                                        "Fn::Sub": "        \"Region\": \"${AWS::Region}\","
+                                                    },
+                                                    {
+                                                        "Fn::Sub": "        \"LogGroup\": \"${LogGroupName}\","
+                                                    },
+                                                    "        \"LogStream\": \"{instance_id}\"",
+                                                    "      }",
+                                                    "    },",
+                                                    "    {",
+                                                    "      \"Id\" : \"CloudWatch\",",
+                                                    "      \"FullName\" : \"AWS.EC2.Windows.CloudWatch.CloudWatch.CloudWatchOutputComponent,AWS.EC2.Windows.CloudWatch\",",
+                                                    "      \"Parameters\" : {",
+                                                    "        \"AccessKey\" : \"\",",
+                                                    "        \"SecretKey\" : \"\",",
+                                                    {
+                                                        "Fn::Sub": "        \"Region\": \"${AWS::Region}\","
+                                                    },
+                                                    "        \"NameSpace\" : \"Windows/Default\"",
+                                                    "      }",
+                                                    "    }],",
+                                                    "    \"Flows\": {",
+                                                    "      \"Flows\": [",
+                                                    "        \"CfnInitLog,CloudWatchCfnInitLog\"",
+                                                    "      ]",
+                                                    "    }",
+                                                    "  }",
+                                                    "}"
+                                                ]
+                                            ]
+                                        },
+                                        " { \"IsEnabled\" : false}"
+                                    ]
+                                }
+                            }
+                        },
+                        "commands": {
+                            "a-enableSSM": {
+                                "command": "powershell.exe -Command \"Set-Service -Name AmazonSSMAgent -StartupType Automatic\" ",
+                                "waitAfterCompletion": "30"
+                            },
+                            "b-restartSSM": {
+                                "command": "powershell.exe -Command \"Restart-Service AmazonSSMAgent -Force\"",
+                                "waitAfterCompletion": "30"
+                            }
+                        }
+                    },
+                    "setup": {
+                        "files": {
+                            "C:\\cfn\\cfn-hup.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[main]\n",
+                                            "stack=",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            "\n",
+                                            "region=",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "C:\\cfn\\hooks.d\\cfn-auto-reloader.conf": {
+                                "content": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "[cfn-auto-reloader-hook]\n",
+                                            "triggers=post.update\n",
+                                            "path=Resources.RDGWLaunchConfiguration.Metadata.AWS::CloudFormation::Init\n",
+                                            "action=cfn-init.exe -v -c config -s ",
+                                            {
+                                                "Ref": "AWS::StackId"
+                                            },
+                                            " -r RDGWLaunchConfiguration",
+                                            " --region ",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "\n"
+                                        ]
+                                    ]
+                                }
+                            },
+                            "C:\\cfn\\Adscripts.zip": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/sqlfci/Adscripts.zip"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\Adscripts.zip.sig": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/sqlfci/Adscripts.zip.sig"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\Verify-Signature.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/sqlfci/Verify-Signature.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\Unzip-Archive.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/sqlfci/Unzip-Archive.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\modules\\AWSLaunchWizardForCFN.zip": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/modules/AWSLaunchWizardForCFN.zip"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\modules\\AWSLaunchWizardForSSM.zip": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/modules/AWSLaunchWizardForSSM.zip"
+                                },
+                                "authentication": "S3AccessCreds"
+                            }
+                        },
+                        "services": {
+                            "windows": {
+                                "cfn-hup": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true",
+                                    "files": [
+                                        "c:\\cfn\\cfn-hup.conf",
+                                        "c:\\cfn\\hooks.d\\cfn-auto-reloader.conf"
+                                    ]
+                                }
+                            }
+                        },
+                        "commands": {
+                            "a-set-execution-policy": {
+                                "command": "powershell.exe -Command \"Set-ExecutionPolicy RemoteSigned -Force\"",
+                                "waitAfterCompletion": "0"
+                            },
+                            "b-verify-signature": {
+                                "command": "powershell.exe -Command C:\\cfn\\Verify-Signature.ps1 RemoteSigned -Force\"",
+                                "waitAfterCompletion": "0"
+                            },
+                            "c-unpack-ADScripts": {
+                                "command": "powershell.exe -Command C:\\cfn\\Unzip-Archive.ps1 -Source C:\\cfn\\Adscripts.zip -Destination C:\\cfn\\",
+                                "waitAfterCompletion": "0"
+                            },
+                            "d-check-psmodulepath": {
+                                "command": "powershell.exe -Command C:\\cfn\\scripts\\Check-PSModulePath.ps1 -PathToCheck 'C:\\Program Files\\WindowsPowerShell\\Modules'",
+                                "waitAfterCompletion": "0"
+                            },
+                            "e-unpack-launchwizard-module": {
+                                "command": "powershell.exe -Command C:\\cfn\\Unzip-Archive.ps1 -Source C:\\cfn\\scripts\\AWSLaunchWizardForCFN.zip -Destination 'C:\\Program Files\\WindowsPowerShell\\Modules'",
+                                "waitAfterCompletion": "0"
+                            },
+                            "f-init-launchwizard-module": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -Command \"",
+                                            "New-AWSLaunchWizardResourceSignal -Stack '",
+                                            {
+                                                "Ref": "AWS::StackName"
+                                            },
+                                            "' -Resource 'RDGWAutoScalingGroup' -Region '",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            "'\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            }
+                        }
+                    },
+                    "join": {
+                        "files": {
+                            "C:\\cfn\\scripts\\Update-DNSServers.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Update-DNSServers.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Update-DNSSuffixSearchList.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Update-DNSSuffixSearchList.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Initialize-RDGW.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Initialize-RDGW.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Tag-RootVolume.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Tag-RootVolume.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Restart-Computer.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Restart-Computer.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\AddUserToGroup.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/AddUserToGroup.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Set-EIP.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Set-EIP.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Enable-CredSSP.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Enable-CredSSP.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            },
+                            "C:\\cfn\\scripts\\Install-RDSGateway.ps1": {
+                                "source": {
+                                    "Fn::Sub": "https://${AssetsBucketName}.${AssetsS3RegionCode}.${AWS::URLSuffix}/${AssetsS3KeyPrefix}sql/scripts/common/Install-RDSGateway.ps1"
+                                },
+                                "authentication": "S3AccessCreds"
+                            }
+
+                        },
+                        "commands": {
+                            "a-update-DNS": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -Command \"C:\\cfn\\scripts\\Update-DNSServers.ps1 -ADServersPrivateIP '",
+                                            {
+                                                "Ref": "ADServersPrivateIP"
+                                            },
+                                            "'\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            },
+                            "b-join-domain": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -Command \"C:\\cfn\\scripts\\Join-Domain.ps1 -DomainName '",
+                                            {
+                                                "Ref": "DomainDNSName"
+                                            },
+                                            "' -DomainAdminPasswordKey '",
+                                            {
+                                                "Ref": "DomainAdminPasswordKey"
+                                            },
+                                            "'\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "forever"
+                            },
+                            "c-add-domadmin-user-to-group": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe ",
+                                            "-ExecutionPolicy RemoteSigned ",
+                                            "-Command \"",
+                                            " C:\\cfn\\scripts\\AddUserToGroup.ps1 -UserName '",
+                                            {
+                                                "Ref": "DomainAdminUser"
+                                            },
+                                            "' -GroupName 'Administrators'\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            },
+                            "d-update-dnssuffixlist": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -Command \"C:\\cfn\\scripts\\Update-DNSSuffixSearchList.ps1 -DomainDNSName '",
+                                            {
+                                                "Ref": "DomainDNSName"
+                                            },
+                                            "'\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            }
+                        }
+                    },
+                    "installRDS": {
+                        "commands": {
+                            "a-install-rds": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -Command \"C:\\cfn\\scripts\\Install-RDSGateway.ps1\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            },
+                            "b-configure-rdgw": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -ExecutionPolicy RemoteSigned ",
+                                            "C:\\cfn\\scripts\\Initialize-RDGW.ps1 -ServerFQDN $($env:COMPUTERNAME + '.",
+                                            {
+                                                "Ref": "DomainDNSName"
+                                            },
+                                            "') -GroupName 'domain admins'"
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            },
+                            "c-tag-root-volume": {
+                                "command": {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "powershell.exe -Command \"C:\\cfn\\scripts\\Tag-RootVolume.ps1 -UniqueID '",
+                                            {
+                                                "Ref": "UniqueID"
+                                            },
+                                            "'\""
+                                        ]
+                                    ]
+                                },
+                                "waitAfterCompletion": "0"
+                            },
+                            "d-enable-credSSP": {
+                                "command": "powershell.exe -ExecutionPolicy RemoteSigned -Command \"C:\\cfn\\scripts\\Enable-CredSSP.ps1\"",
+                                "waitAfterCompletion": "0"
+                            }
+                        }
+                    },
+                    "finalize": {
+                        "commands": {
+                            "a-reboot": {
+                                "command": "powershell.exe -Command \"C:\\cfn\\scripts\\Restart-Computer.ps1\"",
+                                "waitAfterCompletion": "forever"
+                            },
+                            "b-signal-success": {
+                                "command": "powershell.exe -Command \"Write-AWSLaunchWizardStatus\"",
+                                "waitAfterCompletion": "0"
+                        }
+                    }
+                }
+                }
+            },
+            "Properties": {
+                "ImageId": {
+                    "Ref": "LatestAmiId"
+                },
+                "AssociatePublicIpAddress": "true",
+                "SecurityGroups": [
+                    {
+                        "Fn::If": [
+                            "RDGWAccessIsNotEmpty",
+                            {
+                                "Fn::If": [
+                                    "RDGWAccessIsUsingCIDR",
+                                    {
+                                        "Ref": "RemoteDesktopGatewaySG"
+                                    },
+                                    {
+                                        "Ref": "RDGWAccess"
+                                    }
+                                ]
+                            },
+                            {
+                                "Ref": "AWS::NoValue"
+                            }
+                        ]
+                    },
+                    {
+                        "Ref": "DomainMemberSGID"
+                    }
+                ],
+                "IamInstanceProfile": {
+                    "Ref": "RDGWHostProfile"
+                },
+                "InstanceType": {
+                    "Ref": "RDGWInstanceType"
+                },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": "50",
+                            "VolumeType": "gp2"
+                        }
+                    }
+                ],
+                "KeyName": {
+                    "Ref": "KeyPairName"
+                },
+                "LaunchConfigurationName": {
+                    "Fn::Sub": "LaunchWizard-${ApplicationName}-LaunchConfiguration"
+                },
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "<script>\n",
+                                "cfn-init.exe -v -c config -s ",
+                                {
+                                    "Ref": "AWS::StackId"
+                                },
+                                " -r RDGWLaunchConfiguration --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "",
+                                "</script>"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "RemoteDesktopGatewaySG": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Condition": "RDGWAccessIsUsingCIDRAndNotEmpty",
+            "Properties": {
+                "GroupDescription": "Enable RDP access from the Internet",
+                "VpcId": {
+                    "Ref": "VPCID"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "tcp",
+                        "FromPort": "3389",
+                        "ToPort": "3389",
+                        "CidrIp": {
+                            "Ref": "RDGWAccess"
+                        }
+                    },
+                    {
+                        "IpProtocol": "icmp",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": {
+                            "Ref": "RDGWAccess"
+                        }
+                    }
+                ]
+            }
+        }
+    },
+    "Outputs": {
+        "RemoteDesktopGatewaySGID": {
+            "Value": {
+                "Fn::If": [
+                    "RDGWAccessIsUsingCIDRAndNotEmpty",
+                    {
+                        "Ref": "RemoteDesktopGatewaySG"
+                    },
+                    {
+                        "Ref": "RDGWAccess"
+                    }
+                ]
+            },
+            "Description": "Remote Desktop Gateway Security Group ID or Custom CIDR"
+        }
+    }
+}

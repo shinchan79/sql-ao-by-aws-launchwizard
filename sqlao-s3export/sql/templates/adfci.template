@@ -1,0 +1,286 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "This template creates a managed Microsoft AD Directory Service into private subnets in separate Availability Zones inside a VPC. The default Domain Administrator user is 'admin'. **WARNING** This template creates Amazon EC2 Windows instance and related resources. You will be billed for the AWS resources used if you create a stack from this template.",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Network Configuration"
+                    },
+                    "Parameters": [
+                        "VPCCIDR",
+                        "VPCID",
+                        "PrivateSubnet1CIDR",
+                        "PrivateSubnet1ID",
+                        "PrivateSubnet2CIDR",
+                        "PrivateSubnet2ID",
+                        "PublicSubnet1CIDR"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Microsoft Active Directory Configuration"
+                    },
+                    "Parameters": [
+                        "DomainDNSName",
+                        "DomainAdminPasswordKey"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "AWS Launch Wizard Configuration"
+                    },
+                    "Parameters": [
+                        "AssetsBucketName",
+                        "AssetsS3KeyPrefix"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Managed Microsoft Active Directory Tags"
+                    },
+                    "Parameters": [
+                        "ADTagPairs",
+                        "NumberOfADTags"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "DomainAdminPasswordKey": {
+                    "default": "SSM Parameter Store Key of Domain Admin Password"
+                },
+                "DomainDNSName": {
+                    "default": "Domain DNS Name"
+                },
+                "PrivateSubnet1CIDR": {
+                    "default": "Private Subnet 1 CIDR"
+                },
+                "PrivateSubnet1ID": {
+                    "default": "Private Subnet 1 ID"
+                },
+                "PrivateSubnet2CIDR": {
+                    "default": "Private Subnet 2 CIDR"
+                },
+                "PrivateSubnet2ID": {
+                    "default": "Private Subnet 2 ID"
+                },
+                "PublicSubnet1CIDR": {
+                    "default": "Public Subnet 1 CIDR"
+                },
+                "AssetsBucketName": {
+                    "default": "Launch Wizard S3 Bucket Name"
+                },
+                "AssetsS3KeyPrefix": {
+                    "default": "Launch Wizard S3 Key Prefix"
+                },
+                "VPCCIDR": {
+                    "default": "VPC CIDR"
+                },
+                "VPCID": {
+                    "default": "VPC ID"
+                },
+                "ADTagPairs": {
+                    "default": "Tag pairs of AD"
+                },
+                "NumberOfADTags": {
+                    "default": "Number of AD tags to create"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "DomainAdminPasswordKey": {
+            "Description": "Secret Manager Admin Secret for Domain Admin user",
+            "Type": "String"
+        },
+        "DomainDNSName": {
+            "Description": "Fully qualified domain name (FQDN) of the forest root domain e.g. example.com",
+            "Type": "String",
+            "Default": "example.com",
+            "MinLength": "2",
+            "MaxLength": "25",
+            "AllowedPattern": "[a-zA-Z0-9\\-]+\\..+"
+        },
+        "PrivateSubnet1CIDR": {
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-8]))$",
+            "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
+            "Default": "10.0.0.0/19",
+            "Description": "CIDR block for private subnet 1 located in Availability Zone 1.",
+            "Type": "String"
+        },
+        "PrivateSubnet1ID": {
+            "Description": "ID of the private subnet 1 in Availability Zone 1 (e.g., subnet-a0246dcd)",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "PrivateSubnet2CIDR": {
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-8]))$",
+            "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
+            "Default": "10.0.32.0/19",
+            "Description": "CIDR block for private subnet 2 located in Availability Zone 2.",
+            "Type": "String"
+        },
+        "PrivateSubnet2ID": {
+            "Description": "ID of the private subnet 2 in Availability Zone 2 (e.g., subnet-a0246dcd)",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "PublicSubnet1CIDR": {
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-8]))$",
+            "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
+            "Default": "10.0.128.0/20",
+            "Description": "CIDR Block for the public DMZ subnet 1 located in Availability Zone 1",
+            "Type": "String"
+        },
+        "AssetsBucketName": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "LaunchWizard SQLHA bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "LaunchWizard-sqlha-templates",
+            "Description": "S3 bucket name for the LaunchWizard SQLHA assets. LaunchWizard SQLHA bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Type": "String"
+        },
+        "AssetsS3KeyPrefix": {
+            "ConstraintDescription": "LaunchWizard SQLHA key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "LaunchWizard-microsoft-activedirectory/",
+            "Description": "S3 key prefix for the LaunchWizard SQLHA assets. LaunchWizard SQLHA key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Type": "String"
+        },
+        "VPCCIDR": {
+            "AllowedPattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(1[6-9]|2[0-8]))$",
+            "ConstraintDescription": "CIDR block parameter must be in the form x.x.x.x/16-28",
+            "Default": "10.0.0.0/16",
+            "Description": "CIDR Block for the VPC",
+            "Type": "String"
+        },
+        "VPCID": {
+            "Description": "ID of the VPC (e.g., vpc-0343606e)",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "ADTagPairs": {
+            "Default": "",
+            "Description": "Tag Key and Value pairs of AD e.g 'Name':'Nodename'",
+            "Type": "CommaDelimitedList"
+        },
+        "NumberOfADTags": {
+            "Default": "0",
+            "AllowedValues": [
+                "0",
+                "1",
+                "2",
+                "3"
+            ],
+            "Description": "Number of AD tags",
+            "Type": "String"
+        }
+    },
+    "Rules": {
+        "SubnetsInVPC": {
+            "Assertions": [
+                {
+                    "Assert": {
+                        "Fn::EachMemberIn": [
+                            {
+                                "Fn::ValueOfAll": [
+                                    "AWS::EC2::Subnet::Id",
+                                    "VpcId"
+                                ]
+                            },
+                            {
+                                "Fn::RefAll": "AWS::EC2::VPC::Id"
+                            }
+                        ]
+                    },
+                    "AssertDescription": "All subnets must in the VPC"
+                }
+            ]
+        }
+    },
+    "Resources": {
+        "MicrosoftAD": {
+            "Type": "AWS::DirectoryService::MicrosoftAD",
+            "Properties": {
+                "Name": {
+                    "Ref": "DomainDNSName"
+                },
+                "Password": {
+                    "Fn::Join" : [
+                        ":",
+                        [
+                            "{{resolve:secretsmanager",
+                            {
+                                "Ref": "DomainAdminPasswordKey"
+                            },
+                            "SecretString:password}}"
+                        ]
+                    ]
+                },      
+                "VpcSettings": {
+                    "SubnetIds": [
+                        {
+                            "Ref": "PrivateSubnet1ID"
+                        },
+                        {
+                            "Ref": "PrivateSubnet2ID"
+                        }
+                    ],
+                    "VpcId": {
+                        "Ref": "VPCID"
+                    }
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "DomainAdmin": {
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Ref": "DomainDNSName"
+                        },
+                        "\\admin"
+                    ]
+                ]
+            },
+            "Description": "Domain administrator account"
+        },
+        "DnsIpAddresses": {
+            "Value": {
+                "Fn::Join": [
+                    ",",
+                    [
+                        {
+                            "Fn::Select": [
+                                "0",
+                                {
+                                    "Fn::GetAtt": [
+                                        "MicrosoftAD",
+                                        "DnsIpAddresses"
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Fn::Select": [
+                                "1",
+                                {
+                                    "Fn::GetAtt": [
+                                        "MicrosoftAD",
+                                        "DnsIpAddresses"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                ]
+            },
+            "Description": "AD Server 2 Private IP Addresses"
+        },
+        "DirectoryId": {
+            "Value": {
+                "Ref": "MicrosoftAD"
+            },
+            "Description": "Directory ID of the created Managed AD"
+        }
+    }
+}
